@@ -1,5 +1,4 @@
 import os
-import openai
 import streamlit as st
 from streamlit_chat import message
 
@@ -9,6 +8,10 @@ from graph2text import generate_response
 
 # Hardcoded UserID
 USER_ID = "Tomaz"
+
+model_name = "text-bison@001"
+project_id = 'my-project-0004-346516'
+location = 'us-central1'
 
 # On the first execution, we have to create a user node in the database.
 run_query("""

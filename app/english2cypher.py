@@ -1,49 +1,51 @@
 import os
-import openai
+from vertexai.preview.language_models import TextGenerationModel
 from retry import retry
 
-from training import examples
 
-openai.api_key = os.environ.get('OPENAI_KEY')
-
-system = f"""
-You are an assistant with an ability to generate Cypher queries based off example Cypher queries.
-Example Cypher queries are: \n {examples} \n
-Do not response with any explanation or any other information except the Cypher query.
-You do not ever apologize and strictly generate cypher statements based of the provided Cypher examples.
-You need to update the database using an appropriate Cypher statement when a user mentions their likes or dislikes, or what they watched already.
-Do not provide any Cypher statements that can't be inferred from Cypher examples.
-Inform the user when you can't infer the cypher statement due to the lack of context of the conversation and state what is the missing context.
-"""
-
+def run_text_model(
+    prompt: str,
+    project_id: str = project_id,
+    model_name: str = model_name,
+    temperature: float = 0.0,
+    max_decode_steps: int = 100,  # Assuming a default value
+    top_p: float = 1.0,  # Assuming a default value
+    top_k: int = 10,    # Assuming a default value
+    location: str = location,
+    tuned_model_name: str = ""
+) -> str:
+    """Text Completion Use a Large Language Model."""
+    vertexai.init(project=project_id, location=location)
+    model = TextGenerationModel.from_pretrained(model_name)
+    if tuned_model_name:
+        model = model.get_tuned_model(tuned_model_name)
+    response = model.predict(
+        prompt,
+        temperature=temperature,
+        max_output_tokens=max_decode_steps,
+        top_k=top_k,
+        top_p=top_p
+    )
+    return response.text
 
 @retry(tries=2, delay=5)
 def generate_cypher(messages):
-    messages = [
-        {"role": "system", "content": system}
-    ] + messages
-    print(messages)
-    # Make a request to OpenAI
-    completions = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=messages,
-        temperature=0.0
-    )
-    response = completions.choices[0].message.content
-    # Sometime the models bypasses system prompt and returns
-    # data based on previous dialogue history
+    # Convert the messages into a single string for the model
+    prompt = "\n".join([f"{message['role']}: {message['content']}" for message in messages])
+    
+    # Make a request to Vertex AI
+    response = run_text_model(prompt)
+    
+    # The following checks and modifications remain the same:
     if not "MATCH" in response and "{" in response:
         raise Exception(
-            "GPT bypassed system message and is returning response based on previous conversation history" + response)
-    # If the model apologized, remove the first line
+            "Model bypassed system message and is returning response based on previous conversation history" + response)
     if "apologi" in response:
         response = " ".join(response.split("\n")[1:])
-    # Sometime the model adds quotes around Cypher when it wants to explain stuff
     if "`" in response:
         response = response.split("```")[1].strip("`")
     print(response)
     return response
-
 
 if __name__ == '__main__':
     print(generate_cypher([{'role': 'user', 'content': 'What are some good cartoon?'},
@@ -56,3 +58,4 @@ if __name__ == '__main__':
                            {'role': 'user',
                                'content': 'Who was the first person on the moon?'}
                            ]))
+

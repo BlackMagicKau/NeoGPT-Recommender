@@ -1,9 +1,9 @@
 import os
 from neo4j import GraphDatabase
 
-host = os.environ.get('NEO4J_URL')
-user = os.environ.get('NEO4J_USER')
-password = os.environ.get('NEO4J_PASS')
+host = os.environ.get('bolt://44.200.13.113:7687')
+user = os.environ.get('neo4j')
+password = os.environ.get('fund-rest-umbrella')
 driver = GraphDatabase.driver(host, auth=(user, password))
 
 

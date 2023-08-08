@@ -1,8 +1,8 @@
 import os
-import openai
+from vertexai.preview.language_models import TextGenerationModel 
+from english2cypher import run_text_model 
 
-openai.api_key = os.environ.get('OPENAI_KEY')
-
+    
 system = f"""
 You are an assistant that helps to generate text to form nice and human understandable answers based.
 The latest prompt contains the information, and you need to generate a human readable response based on the given information.
@@ -11,28 +11,21 @@ Do not add any additional information that is not explicitly provided in the lat
 I repeat, do not add any information that is not explicitly given.
 """
 
-
 def generate_response(messages):
-    messages = [
-        {"role": "system", "content": system}
-    ] + messages
-    print(messages)
-    # Make a request to OpenAI
-    completions = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=messages,
-        temperature=0.0
-    )
-    response = completions.choices[0].message.content
+    # Convert the messages into a single string for the model
+    prompt = "\n".join([f"{message['role']}: {message['content']}" for message in messages])
+    
+    # Make a request to Vertex AI
+    response = run_text_model(prompt)
+    
+    # The following checks and modifications remain the same:
     print(response)
-    # If the model apologized, remove the first line or sentence
     if "apologi" in response:
         if "\n" in response:
             response = " ".join(response.split("\n")[1:])
         else:
             response = " ".join(response.split(".")[1:])
     return response
-
 
 if __name__ == '__main__':
     data = [{'actor': 'Sigourney Weaver', 'role': "Witch"}, {'actor': 'Holly Hunter', "role": "Assassin"}, {
